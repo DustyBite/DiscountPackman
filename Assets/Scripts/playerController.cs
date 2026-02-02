@@ -1,33 +1,36 @@
 using UnityEngine;
 
-public class SimplePlayerMove : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
+    [Header("Movement")]
     public float speed = 5f;
-    public Transform playerMesh; // Assign in Inspector
+    public Transform playerMesh;
     public float rotationSpeed = 10f;
 
-    void Update()
-	{
-		float x = Input.GetAxisRaw("Horizontal");
-		float z = Input.GetAxisRaw("Vertical");
+    [Header("Personality")]
+    public float scary = 4f;
+    public float bravey = 5f;
 
-		Vector3 move = new Vector3(x, 0f, z).normalized;
-		transform.position += move * speed * Time.deltaTime;
-	
-		if (move != Vector3.zero)
+    void Update()
+    {
+        float x = 0f;
+        float z = 0f;
+
+        if (Input.GetKey(KeyCode.W)) z += 1f;
+        if (Input.GetKey(KeyCode.S)) z -= 1f;
+        if (Input.GetKey(KeyCode.D)) x += 1f;
+        if (Input.GetKey(KeyCode.A)) x -= 1f;
+
+        Vector3 move = new Vector3(x, 0f, z).normalized;
+
+        // Move
+        transform.position += move * speed * Time.deltaTime;
+
+        // Rotate mesh toward movement
+        if (move != Vector3.zero && playerMesh != null)
         {
-            RotateMesh(move);
+            Quaternion targetRot = Quaternion.LookRotation(move, Vector3.up);
+            playerMesh.rotation = Quaternion.Slerp(playerMesh.rotation, targetRot, rotationSpeed * Time.deltaTime);
         }
     }
-
-    void RotateMesh(Vector3 direction)
-    {
-        Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-        playerMesh.rotation = Quaternion.Slerp(
-            playerMesh.rotation,
-            targetRotation,
-            rotationSpeed * Time.deltaTime
-        );
-    }
-
 }
