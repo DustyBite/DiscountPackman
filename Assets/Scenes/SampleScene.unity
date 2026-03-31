@@ -420,8 +420,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHeatTracker
   influenceMap: {fileID: 26537454}
-  heatPerSecond: 2
-  heatRadius: 8
+  heatPerSecond: 10
+  heatRadius: 5
   heatUpdateInterval: 0.2
   addMovementHeat: 1
   movementThreshold: 0.1
