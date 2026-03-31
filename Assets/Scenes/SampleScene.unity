@@ -119,6 +119,105 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &26537453
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 26537455}
+  - component: {fileID: 26537454}
+  m_Layer: 0
+  m_Name: InfluenceMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &26537454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 26537453}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d78a4089eef5384a95695997416a95a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceMap
+  width: 100
+  height: 100
+  cellSize: 0.5
+  heatDecayRate: 0.5
+  heatThreshold: 0.1
+  showInfluence: 1
+  showHeatMap: 0
+--- !u!4 &26537455
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 26537453}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &60917809
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 60917811}
+  - component: {fileID: 60917810}
+  m_Layer: 0
+  m_Name: InfluenceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &60917810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60917809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fa743572e1da56499e2667d095cafa0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceManager
+  map: {fileID: 26537454}
+  player: {fileID: 327793220}
+  playerInfluence: 10
+  playerInfluenceRadius: 5
+--- !u!4 &60917811
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60917809}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &133109777
 GameObject:
   m_ObjectHideFlags: 0
@@ -241,6 +340,7 @@ GameObject:
   - component: {fileID: 327793220}
   - component: {fileID: 327793219}
   - component: {fileID: 327793218}
+  - component: {fileID: 327793221}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -307,6 +407,27 @@ Transform:
   - {fileID: 330585546}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &327793221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327793217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2c336f1aa1f2764cab0c5fd73092007, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHeatTracker
+  influenceMap: {fileID: 26537454}
+  heatPerSecond: 2
+  heatRadius: 8
+  heatUpdateInterval: 0.2
+  addMovementHeat: 1
+  movementThreshold: 0.1
+  movementHeatMultiplier: 1.5
+  actionHeatAmount: 5
+  actionHeatRadius: 3
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -583,7 +704,7 @@ GameObject:
   - component: {fileID: 424255645}
   - component: {fileID: 424255644}
   - component: {fileID: 424255643}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -624,7 +745,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &424255644
 MeshRenderer:
@@ -916,7 +1037,7 @@ GameObject:
   - component: {fileID: 704173953}
   - component: {fileID: 704173952}
   - component: {fileID: 704173951}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1196,7 +1317,7 @@ GameObject:
   - component: {fileID: 1247427318}
   - component: {fileID: 1247427317}
   - component: {fileID: 1247427316}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1237,7 +1358,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1247427317
 MeshRenderer:
@@ -1749,6 +1870,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1467755819}
   - component: {fileID: 1467755818}
+  - component: {fileID: 1467755820}
   m_Layer: 0
   m_Name: Enemy (1)
   m_TagString: Enemy
@@ -1771,12 +1893,35 @@ MonoBehaviour:
   scary: 9
   bravey: 10
   enemyMesh: {fileID: 2034744665}
+  influenceMap: {fileID: 26537454}
+  controller: {fileID: 1467755820}
   moveSpeed: 3
   rotationSpeed: 10
   stopDistance: 1.5
+  chaseRange: 8
   wanderRadius: 5
   wanderTime: 2
-  chaseRange: 8
+  influenceWeight: 0.5
+  goalWeight: 4
+  sampleDistance: 2.5
+  smoothing: 5
+  wanderSamples: 8
+  chaseSamples: 5
+  chaseAngleSpread: 60
+  wanderAngleSpread: 180
+  obstacleCheckDistance: 2
+  obstacleRayCount: 5
+  obstacleRaySpread: 60
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  wallSlideAmount: 0.7
+  useHeatMapInvestigation: 1
+  heatInterestThreshold: 2
+  heatSearchRadius: 10
+  heatAttractionWeight: 2
+  showDebugRays: 1
+  showObstacleRays: 1
 --- !u!4 &1467755819
 Transform:
   m_ObjectHideFlags: 0
@@ -1793,6 +1938,31 @@ Transform:
   - {fileID: 2034744665}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!143 &1467755820
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467755817}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &1591118320
 GameObject:
   m_ObjectHideFlags: 0
@@ -1803,6 +1973,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1591118322}
   - component: {fileID: 1591118321}
+  - component: {fileID: 1591118323}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Enemy
@@ -1825,12 +1996,35 @@ MonoBehaviour:
   scary: 5
   bravey: 7
   enemyMesh: {fileID: 2075182128}
+  influenceMap: {fileID: 26537454}
+  controller: {fileID: 1591118323}
   moveSpeed: 5
   rotationSpeed: 10
   stopDistance: 1.5
+  chaseRange: 8
   wanderRadius: 5
   wanderTime: 2
-  chaseRange: 8
+  influenceWeight: 0.5
+  goalWeight: 4
+  sampleDistance: 2.5
+  smoothing: 5
+  wanderSamples: 8
+  chaseSamples: 5
+  chaseAngleSpread: 60
+  wanderAngleSpread: 180
+  obstacleCheckDistance: 2
+  obstacleRayCount: 5
+  obstacleRaySpread: 60
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  wallSlideAmount: 0.7
+  useHeatMapInvestigation: 1
+  heatInterestThreshold: 2
+  heatSearchRadius: 10
+  heatAttractionWeight: 2
+  showDebugRays: 1
+  showObstacleRays: 1
 --- !u!4 &1591118322
 Transform:
   m_ObjectHideFlags: 0
@@ -1847,6 +2041,31 @@ Transform:
   - {fileID: 2075182128}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!143 &1591118323
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1591118320}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &1796370676
 GameObject:
   m_ObjectHideFlags: 0
@@ -1970,7 +2189,7 @@ GameObject:
   - component: {fileID: 1933539009}
   - component: {fileID: 1933539008}
   - component: {fileID: 1933539007}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2011,7 +2230,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1933539008
 MeshRenderer:
@@ -2311,7 +2530,7 @@ GameObject:
   - component: {fileID: 2085839313}
   - component: {fileID: 2085839312}
   - component: {fileID: 2085839311}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2352,7 +2571,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &2085839312
 MeshRenderer:
@@ -2420,6 +2639,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2093811467}
   - component: {fileID: 2093811466}
+  - component: {fileID: 2093811468}
   m_Layer: 0
   m_Name: Enemy (2)
   m_TagString: Enemy
@@ -2442,12 +2662,35 @@ MonoBehaviour:
   scary: 3
   bravey: 4
   enemyMesh: {fileID: 1126014733}
+  influenceMap: {fileID: 26537454}
+  controller: {fileID: 2093811468}
   moveSpeed: 7
   rotationSpeed: 10
   stopDistance: 1.5
+  chaseRange: 8
   wanderRadius: 5
   wanderTime: 2
-  chaseRange: 8
+  influenceWeight: 0.5
+  goalWeight: 4
+  sampleDistance: 2.5
+  smoothing: 5
+  wanderSamples: 8
+  chaseSamples: 5
+  chaseAngleSpread: 60
+  wanderAngleSpread: 180
+  obstacleCheckDistance: 2
+  obstacleRayCount: 5
+  obstacleRaySpread: 60
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  wallSlideAmount: 0.7
+  useHeatMapInvestigation: 1
+  heatInterestThreshold: 2
+  heatSearchRadius: 10
+  heatAttractionWeight: 2
+  showDebugRays: 1
+  showObstacleRays: 1
 --- !u!4 &2093811467
 Transform:
   m_ObjectHideFlags: 0
@@ -2464,6 +2707,31 @@ Transform:
   - {fileID: 1126014733}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!143 &2093811468
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2093811465}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &2108518733
 GameObject:
   m_ObjectHideFlags: 0
@@ -2590,3 +2858,5 @@ SceneRoots:
   - {fileID: 1591118322}
   - {fileID: 1467755819}
   - {fileID: 2093811467}
+  - {fileID: 26537455}
+  - {fileID: 60917811}

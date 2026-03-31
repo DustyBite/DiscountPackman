@@ -32,5 +32,14 @@ public class PlayerController : MonoBehaviour
             Quaternion targetRot = Quaternion.LookRotation(move, Vector3.up);
             playerMesh.rotation = Quaternion.Slerp(playerMesh.rotation, targetRot, rotationSpeed * Time.deltaTime);
         }
+		
+		if (Input.GetKey(KeyCode.T))
+		{
+			PlayerHeatTracker heatTracker = GetComponent<PlayerHeatTracker>();
+			if (heatTracker != null)
+			{
+				heatTracker.AddActionHeat();
+			}
+		}
     }
 }
