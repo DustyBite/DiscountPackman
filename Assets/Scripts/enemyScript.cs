@@ -3,7 +3,19 @@ using System.Collections.Generic;
 
 public class EnemyAI : MonoBehaviour
 {
-    [Header("Personality")]
+    [Header("Pathfinding")]
+	public bool usePathfinding = true;
+	public Pathfinding pathfinding;
+	public float pathUpdateInterval = 0.5f;
+	public float waypointReachDistance = 0.5f;
+	public bool showPath = true;
+
+	private List<Vector3> currentPath = new List<Vector3>();
+	private int currentWaypointIndex = 0;
+	private float pathUpdateTimer = 0f;
+	private Vector3 lastPathTarget = Vector3.zero;
+	
+	[Header("Personality")]
     public float scary = 5f;
     public float bravey = 7f;
 
@@ -104,131 +116,184 @@ public class EnemyAI : MonoBehaviour
     }
 
     void Update()
-    {
-        Vector3 desiredDirection = Vector3.zero;
-        bool hasTarget = false;
-
-        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
-        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-
-        List<GameObject> targets = new List<GameObject>();
-        if (enemies != null) targets.AddRange(enemies);
-        if (playerObj != null) targets.Add(playerObj);
-
-        // Find closest valid target
-        GameObject closestTarget = null;
-        float closestDistance = Mathf.Infinity;
-
-        foreach (GameObject t in targets)
-        {
-            if (t == this.gameObject) continue;
-
-            float distance = Vector3.Distance(transform.position, t.transform.position);
-            
-            if (distance < chaseRange && distance < closestDistance)
-            {
-                closestTarget = t;
-                closestDistance = distance;
-            }
-        }
-
-        // Update chase state
-        isChasing = (closestTarget != null);
-        currentTarget = closestTarget;
-
-        // Process the closest target
-        if (closestTarget != null)
-        {
-            EnemyAI targetAI = closestTarget.GetComponent<EnemyAI>();
-            float targetScary = targetAI != null ? targetAI.scary : 4f;
-
-            if (targetScary < bravey)
-                desiredDirection = Seek(closestTarget.transform.position);
-            else
-                desiredDirection = Flee(closestTarget.transform.position);
-
-            hasTarget = true;
-        }
-
-        // No target in range - investigate heat or wander
-	if (!hasTarget)
 	{
-		if (useHeatMapInvestigation && influenceMap != null)
+		Vector3 desiredDirection = Vector3.zero;
+		bool hasTarget = false;
+
+		GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+		GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+
+		List<GameObject> targets = new List<GameObject>();
+		if (enemies != null) targets.AddRange(enemies);
+		if (playerObj != null) targets.Add(playerObj);
+
+		// Find closest valid target
+		GameObject closestTarget = null;
+		float closestDistance = Mathf.Infinity;
+
+		foreach (GameObject t in targets)
+		{
+			if (t == this.gameObject) continue;
+
+			float distance = Vector3.Distance(transform.position, t.transform.position);
+			
+			if (distance < chaseRange && distance < closestDistance)
+			{
+				closestTarget = t;
+				closestDistance = distance;
+			}
+		}
+
+		// Update chase state
+		isChasing = (closestTarget != null);
+		currentTarget = closestTarget;
+
+		Vector3 targetPosition = Vector3.zero;
+
+		// Process the closest target
+		if (closestTarget != null)
+		{
+			EnemyAI targetAI = closestTarget.GetComponent<EnemyAI>();
+			float targetScary = targetAI != null ? targetAI.scary : 4f;
+
+			targetPosition = closestTarget.transform.position;
+			hasTarget = true;
+		}
+		// No target in range - investigate heat or wander
+		else if (useHeatMapInvestigation && influenceMap != null)
 		{
 			Vector3 heatTarget = FindHottestSpot();
-        
+			
 			if (heatTarget != Vector3.zero)
 			{
-				desiredDirection = Seek(heatTarget);
+				targetPosition = heatTarget;
 				isInvestigating = true;
 				investigationTarget = heatTarget;
+				hasTarget = true;
 			}
 			else
 			{
-				desiredDirection = Wander();
 				isInvestigating = false;
 			}
 		}
 		else
 		{
-			desiredDirection = Wander();
 			isInvestigating = false;
 		}
+
+		// PATHFINDING MODE
+		if (usePathfinding && pathfinding != null && hasTarget)
+		{
+			pathUpdateTimer += Time.deltaTime;
+
+			// Recalculate path periodically or if target moved significantly
+			bool needsNewPath = currentPath.Count == 0 || 
+							   pathUpdateTimer >= pathUpdateInterval ||
+							   Vector3.Distance(targetPosition, lastPathTarget) > 2f;
+
+			if (needsNewPath)
+			{
+				currentPath = pathfinding.FindPath(transform.position, targetPosition);
+				currentWaypointIndex = 0;
+				pathUpdateTimer = 0f;
+				lastPathTarget = targetPosition;
+			}
+
+			// Follow path
+			if (currentPath.Count > 0)
+			{
+				Vector3 currentWaypoint = currentPath[currentWaypointIndex];
+				Vector3 dirToWaypoint = currentWaypoint - transform.position;
+				dirToWaypoint.y = 0f;
+
+				// Reached waypoint
+				if (dirToWaypoint.magnitude < waypointReachDistance)
+				{
+					currentWaypointIndex++;
+					
+					// Reached end of path
+					if (currentWaypointIndex >= currentPath.Count)
+					{
+						currentPath.Clear();
+						currentWaypointIndex = 0;
+					}
+				}
+
+				desiredDirection = dirToWaypoint.normalized;
+			}
+			else
+			{
+				// No path - use direct approach
+				desiredDirection = (targetPosition - transform.position).normalized;
+			}
+
+			// Use influence map to fine-tune direction
+			Vector3 moveDirection = ChooseBestDirection(desiredDirection);
+			moveDirection = AdvancedObstacleAvoidance(moveDirection);
+
+			// Smooth movement
+			if (moveDirection.magnitude > 0.01f)
+			{
+				currentMoveDirection = Vector3.Lerp(
+					currentMoveDirection,
+					moveDirection,
+					smoothing * Time.deltaTime
+				).normalized;
+			}
+		}
+		// NON-PATHFINDING MODE (Original behavior)
+		else
+		{
+			if (hasTarget)
+			{
+				desiredDirection = (targetPosition - transform.position).normalized;
+			}
+			else
+			{
+				desiredDirection = Wander();
+			}
+
+			Vector3 moveDirection = ChooseBestDirection(desiredDirection);
+			moveDirection = AdvancedObstacleAvoidance(moveDirection);
+
+			if (moveDirection.magnitude > 0.01f)
+			{
+				currentMoveDirection = Vector3.Lerp(
+					currentMoveDirection,
+					moveDirection,
+					smoothing * Time.deltaTime
+				).normalized;
+			}
+		}
+
+		// MOVE WITH CHARACTER CONTROLLER
+		if (controller != null)
+		{
+			Vector3 moveVelocity = currentMoveDirection * moveSpeed * Time.deltaTime;
+			moveVelocity.y = -2f * Time.deltaTime;
+			
+			CollisionFlags collisionFlags = controller.Move(moveVelocity);
+
+			if ((collisionFlags & CollisionFlags.Sides) != 0)
+			{
+				Vector3 slideDir = Vector3.Cross(Vector3.up, currentMoveDirection);
+				slideDir = Vector3.Cross(slideDir, Vector3.up).normalized;
+				
+				Vector3 slideVelocity = slideDir * moveSpeed * wallSlideAmount * Time.deltaTime;
+				slideVelocity.y = -2f * Time.deltaTime;
+				
+				controller.Move(slideVelocity);
+			}
+		}
+		else
+		{
+			transform.position += currentMoveDirection * moveSpeed * Time.deltaTime;
+		}
+
+		// Rotate mesh
+		if (currentMoveDirection.magnitude > 0.01f && enemyMesh != null)
+			RotateMesh(currentMoveDirection);
 	}
-	else
-	{
-		isInvestigating = false;
-	}
-
-        // Choose best direction using influence map (adaptive sampling)
-        Vector3 moveDirection = ChooseBestDirection(desiredDirection);
-
-        // Advanced obstacle avoidance with multiple rays
-        moveDirection = AdvancedObstacleAvoidance(moveDirection);
-
-        // Smooth movement
-        if (moveDirection.magnitude > 0.01f)
-        {
-            currentMoveDirection = Vector3.Lerp(
-                currentMoveDirection,
-                moveDirection,
-                smoothing * Time.deltaTime
-            ).normalized;
-        }
-
-        // MOVE WITH CHARACTER CONTROLLER (physically blocked by colliders)
-        if (controller != null)
-        {
-            Vector3 moveVelocity = currentMoveDirection * moveSpeed * Time.deltaTime;
-            
-            // Apply gravity
-            moveVelocity.y = -2f * Time.deltaTime;
-            
-            // Move and handle collisions
-            CollisionFlags collisionFlags = controller.Move(moveVelocity);
-
-            // If we hit something, try sliding along it
-            if ((collisionFlags & CollisionFlags.Sides) != 0)
-            {
-                Vector3 slideDir = Vector3.Cross(Vector3.up, currentMoveDirection);
-                slideDir = Vector3.Cross(slideDir, Vector3.up).normalized;
-                
-                Vector3 slideVelocity = slideDir * moveSpeed * wallSlideAmount * Time.deltaTime;
-                slideVelocity.y = -2f * Time.deltaTime;
-                
-                controller.Move(slideVelocity);
-            }
-        }
-        else
-        {
-            // Fallback if no CharacterController
-            transform.position += currentMoveDirection * moveSpeed * Time.deltaTime;
-        }
-
-        // Rotate mesh
-        if (currentMoveDirection.magnitude > 0.01f && enemyMesh != null)
-            RotateMesh(currentMoveDirection);
-    }
 
     // =========================
     // BEHAVIORS
@@ -536,6 +601,29 @@ public class EnemyAI : MonoBehaviour
 		{
 			Gizmos.color = Color.magenta;
 			Gizmos.DrawLine(transform.position, currentTarget.transform.position);
+		}
+
+		// Draw pathfinding path
+		if (showPath && currentPath != null && currentPath.Count > 0)
+		{
+			Gizmos.color = Color.blue;
+			
+			// Draw line to first waypoint
+			Gizmos.DrawLine(transform.position, currentPath[0]);
+			
+			// Draw path segments
+			for (int i = 0; i < currentPath.Count - 1; i++)
+			{
+				Gizmos.DrawLine(currentPath[i], currentPath[i + 1]);
+				Gizmos.DrawWireSphere(currentPath[i], 0.3f);
+			}
+			
+			// Draw current waypoint larger
+			if (currentWaypointIndex < currentPath.Count)
+			{
+				Gizmos.color = Color.cyan;
+				Gizmos.DrawWireSphere(currentPath[currentWaypointIndex], 0.5f);
+			}
 		}
 
 		// Draw stop distance
