@@ -73,6 +73,9 @@ public class EnemyAI : MonoBehaviour
     public bool showDebugRays = true;
     public bool showObstacleRays = true;
     public bool showPath = true;
+	
+	[Header("Fuzzy Logic")]
+	public EnemyFuzzyLogic fuzzyLogic;
 
     // FSM
     private AIState currentState;
@@ -118,26 +121,83 @@ public class EnemyAI : MonoBehaviour
 
         // Initialize FSM with starting state
         SetState(CreateState(startingState));
+		
+		if (fuzzyLogic == null)
+			fuzzyLogic = GetComponent<EnemyFuzzyLogic>();
     }
 
     void Update()
-    {
-        if (currentState != null)
-        {
-            // Update current state
-            currentState.UpdateState();
+	{
+		// Evaluate fuzzy logic every frame
+		if (fuzzyLogic != null && fuzzyLogic.useFuzzyLogic)
+		{
+			float distToTarget = currentTarget != null ? 
+				Vector3.Distance(transform.position, currentTarget.transform.position) : 20f;
+			
+			float threatLevel = 0f;
+			if (currentTarget != null)
+			{
+				EnemyAI targetAI = currentTarget.GetComponent<EnemyAI>();
+				threatLevel = targetAI != null ? targetAI.scary : 4f;
+			}
 
-            // Check for state transitions
-            AIState nextState = currentState.CheckTransitions();
-            if (nextState != null)
-            {
-                SetState(nextState);
-            }
-        }
+			int nearbyAllies = CountNearbyAllies();
+			float currentInfluence = influenceMap != null ? 
+				influenceMap.GetInfluence(transform.position) : 0f;
 
-        // Always update visualization
-        UpdateStateType();
-    }
+			fuzzyLogic.EvaluateFuzzyLogic(
+				currentHealth,
+				distToTarget,
+				threatLevel,
+				bravey,
+				nearbyAllies,
+				currentInfluence
+			);
+
+			// Apply fuzzy modifiers
+			ApplyFuzzyModifiers();
+		}
+
+		// Run FSM
+		if (currentState != null)
+		{
+			currentState.UpdateState();
+
+			AIState nextState = currentState.CheckTransitions();
+			if (nextState != null)
+			{
+				SetState(nextState);
+			}
+		}
+
+		UpdateStateType();
+	}
+
+	void ApplyFuzzyModifiers()
+	{
+		// Adjust move speed based on fuzzy logic
+		float fuzzySpeedMod = fuzzyLogic.GetFuzzySpeedModifier();
+		// Don't directly modify moveSpeed here - use in MoveInDirection instead
+
+		// Adjust influence weight based on caution
+		influenceWeight = fuzzyLogic.GetFuzzyInfluenceWeight();
+	}
+
+	int CountNearbyAllies()
+	{
+		int count = 0;
+		GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+		
+		foreach (GameObject enemy in enemies)
+		{
+			if (enemy == gameObject) continue;
+			
+			float dist = Vector3.Distance(transform.position, enemy.transform.position);
+			if (dist < 8f) count++;
+		}
+		
+		return count;
+	}
 
     // ==========================================
     // FSM MANAGEMENT
@@ -272,44 +332,51 @@ public class EnemyAI : MonoBehaviour
     }
 
     public void MoveInDirection(Vector3 moveDirection)
-    {
-        if (moveDirection.magnitude > 0.01f)
-        {
-            currentMoveDirection = Vector3.Lerp(
-                currentMoveDirection,
-                moveDirection,
-                smoothing * Time.deltaTime
-            ).normalized;
-        }
+	{
+		if (moveDirection.magnitude > 0.01f)
+		{
+			currentMoveDirection = Vector3.Lerp(
+				currentMoveDirection,
+				moveDirection,
+				smoothing * Time.deltaTime
+			).normalized;
+		}
 
-        if (controller != null)
-        {
-            Vector3 moveVelocity = currentMoveDirection * moveSpeed * Time.deltaTime;
-            moveVelocity.y = -2f * Time.deltaTime;
-            
-            CollisionFlags collisionFlags = controller.Move(moveVelocity);
+		// Apply fuzzy speed modifier
+		float speedModifier = 1f;
+		if (fuzzyLogic != null && fuzzyLogic.useFuzzyLogic)
+		{
+			speedModifier = fuzzyLogic.GetFuzzySpeedModifier();
+		}
 
-            if ((collisionFlags & CollisionFlags.Sides) != 0)
-            {
-                Vector3 slideDir = Vector3.Cross(Vector3.up, currentMoveDirection);
-                slideDir = Vector3.Cross(slideDir, Vector3.up).normalized;
-                
-                Vector3 slideVelocity = slideDir * moveSpeed * wallSlideAmount * Time.deltaTime;
-                slideVelocity.y = -2f * Time.deltaTime;
-                
-                controller.Move(slideVelocity);
-            }
-        }
-        else
-        {
-            transform.position += currentMoveDirection * moveSpeed * Time.deltaTime;
-        }
+		if (controller != null)
+		{
+			Vector3 moveVelocity = currentMoveDirection * moveSpeed * speedModifier * Time.deltaTime;
+			moveVelocity.y = -2f * Time.deltaTime;
+			
+			CollisionFlags collisionFlags = controller.Move(moveVelocity);
 
-        if (currentMoveDirection.magnitude > 0.01f && enemyMesh != null)
-        {
-            RotateMesh(currentMoveDirection);
-        }
-    }
+			if ((collisionFlags & CollisionFlags.Sides) != 0)
+			{
+				Vector3 slideDir = Vector3.Cross(Vector3.up, currentMoveDirection);
+				slideDir = Vector3.Cross(slideDir, Vector3.up).normalized;
+				
+				Vector3 slideVelocity = slideDir * moveSpeed * speedModifier * wallSlideAmount * Time.deltaTime;
+				slideVelocity.y = -2f * Time.deltaTime;
+				
+				controller.Move(slideVelocity);
+			}
+		}
+		else
+		{
+			transform.position += currentMoveDirection * moveSpeed * speedModifier * Time.deltaTime;
+		}
+
+		if (currentMoveDirection.magnitude > 0.01f && enemyMesh != null)
+		{
+			RotateMesh(currentMoveDirection);
+		}
+	}
 
     public void LookAround()
     {

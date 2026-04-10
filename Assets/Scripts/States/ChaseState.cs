@@ -65,33 +65,43 @@ public class ChaseState : AIState
     }
 
     public override AIState CheckTransitions()
-    {
-        // Target destroyed or lost for too long
-        if (target == null || lostTargetTimer > maxLostTime)
-        {
-            // Try to investigate last known position
-            if (target != null)
-            {
-                return new InvestigateState(enemy, target.transform.position);
-            }
-            return new PatrolState(enemy);
-        }
+	{
+		if (target == null || lostTargetTimer > maxLostTime)
+		{
+			if (target != null)
+			{
+				return new InvestigateState(enemy, target.transform.position);
+			}
+			return new PatrolState(enemy);
+		}
 
-        // Target became too scary - flee!
-        EnemyAI targetAI = target.GetComponent<EnemyAI>();
-        float targetScary = targetAI != null ? targetAI.scary : 4f;
-        
-        if (targetScary > enemy.bravey)
-        {
-            return new FleeState(enemy, target);
-        }
+		// Use fuzzy logic for flee decision
+		if (enemy.fuzzyLogic != null && enemy.fuzzyLogic.useFuzzyLogic)
+		{
+			if (enemy.fuzzyLogic.ShouldFlee())
+			{
+				return new FleeState(enemy, target);
+			}
 
-        // Low health - consider fleeing or hiding
-        if (enemy.currentHealth < enemy.fleeHealthThreshold)
-        {
-            return new FleeState(enemy, target);
-        }
+			// Transition to attack if close enough and aggressive
+			float distance = Vector3.Distance(enemy.transform.position, target.transform.position);
+			if (distance <= enemy.attackRange && enemy.fuzzyLogic.ShouldAttack())
+			{
+				return new AttackState(enemy, target);
+			}
+		}
+		else
+		{
+			// Fallback to original logic
+			EnemyAI targetAI = target.GetComponent<EnemyAI>();
+			float targetScary = targetAI != null ? targetAI.scary : 4f;
+			
+			if (targetScary > enemy.bravey || enemy.currentHealth < enemy.fleeHealthThreshold)
+			{
+				return new FleeState(enemy, target);
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

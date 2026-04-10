@@ -229,6 +229,7 @@ GameObject:
   - component: {fileID: 128783202}
   - component: {fileID: 128783201}
   - component: {fileID: 128783200}
+  - component: {fileID: 128783203}
   m_Layer: 0
   m_Name: Enemy (1)
   m_TagString: Enemy
@@ -318,6 +319,7 @@ MonoBehaviour:
   showDebugRays: 1
   showObstacleRays: 1
   showPath: 1
+  fuzzyLogic: {fileID: 128783203}
   currentStateType: 0
   isChasing: 0
   isFleeing: 0
@@ -342,6 +344,24 @@ Transform:
   - {fileID: 969040551}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &128783203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 128783199}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f6f28d369a838049aee960ad17c5023, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyFuzzyLogic
+  useFuzzyLogic: 1
+  showFuzzyDebug: 0
+  fuzzyThreatLevel: 0
+  fuzzyAggressionLevel: 0
+  fuzzyCautionLevel: 0
+  fuzzyDesireToFlee: 0
 --- !u!1 &160455962
 GameObject:
   m_ObjectHideFlags: 0
@@ -2541,6 +2561,7 @@ GameObject:
   - component: {fileID: 1591118322}
   - component: {fileID: 1591118321}
   - component: {fileID: 1591118323}
+  - component: {fileID: 1591118324}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Enemy
@@ -2605,6 +2626,7 @@ MonoBehaviour:
   showDebugRays: 1
   showObstacleRays: 1
   showPath: 1
+  fuzzyLogic: {fileID: 1591118324}
   currentStateType: 0
   isChasing: 0
   isFleeing: 0
@@ -2654,6 +2676,24 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &1591118324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1591118320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f6f28d369a838049aee960ad17c5023, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyFuzzyLogic
+  useFuzzyLogic: 1
+  showFuzzyDebug: 0
+  fuzzyThreatLevel: 0
+  fuzzyAggressionLevel: 0
+  fuzzyCautionLevel: 0
+  fuzzyDesireToFlee: 0
 --- !u!1 &1796370676
 GameObject:
   m_ObjectHideFlags: 0
