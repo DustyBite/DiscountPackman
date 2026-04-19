@@ -76,7 +76,14 @@ public class EnemyAI : MonoBehaviour
 	
 	[Header("Fuzzy Logic")]
 	public EnemyFuzzyLogic fuzzyLogic;
+	
+	[Header("Genetic Algorithm")]
+	public GeneticAlgorithm.Genome genome;
+	public GeneticAlgorithm.FitnessMetrics fitnessMetrics = new GeneticAlgorithm.FitnessMetrics();
 
+	private float lifeStartTime;
+	private Vector3 lastPosition;
+	
     // FSM
     private AIState currentState;
     public AIStateType currentStateType;
@@ -124,10 +131,34 @@ public class EnemyAI : MonoBehaviour
 		
 		if (fuzzyLogic == null)
 			fuzzyLogic = GetComponent<EnemyFuzzyLogic>();
+		
+		lifeStartTime = Time.time;
+		lastPosition = transform.position;
+		fitnessMetrics.Reset();
+		fitnessMetrics.healthRemaining = currentHealth;
     }
 
     void Update()
 	{
+		// Track survival time
+		fitnessMetrics.survivalTime = Time.time - lifeStartTime;
+		
+		// Track distance traveled
+		float distThisFrame = Vector3.Distance(transform.position, lastPosition);
+		fitnessMetrics.distanceTraveled += distThisFrame;
+		lastPosition = transform.position;
+		
+		// Track time near player
+		GameObject player = GameObject.FindGameObjectWithTag("Player");
+		if (player != null)
+		{
+			float distToPlayer = Vector3.Distance(transform.position, player.transform.position);
+			if (distToPlayer < chaseRange)
+			{
+				fitnessMetrics.timeNearPlayer += Time.deltaTime;
+			}
+		}
+		
 		// Evaluate fuzzy logic every frame
 		if (fuzzyLogic != null && fuzzyLogic.useFuzzyLogic)
 		{
@@ -396,36 +427,67 @@ public class EnemyAI : MonoBehaviour
     }
 
     public void PerformAttack(GameObject target)
-    {
-        Debug.Log($"{name} attacks {target.name}!");
-        
-        // Add your attack logic here
-        // For example: deal damage, play animation, etc.
-        
-        EnemyAI targetAI = target.GetComponent<EnemyAI>();
-        if (targetAI != null)
-        {
-            targetAI.TakeDamage(10f);
-        }
-    }
+	{
+		Debug.Log($"{name} attacks {target.name}!");
+		
+		float damage = 10f;
+		if (genome != null)
+		{
+			damage *= genome.damageMultiplier;
+		}
+		
+		// Track attack attempt
+		bool hit = Random.value > 0.3f; // 70% hit chance
+		
+		if (hit)
+		{
+			fitnessMetrics.successfulAttacks++;
+			fitnessMetrics.damageDealt += damage;
+			
+			EnemyAI targetAI = target.GetComponent<EnemyAI>();
+			if (targetAI != null)
+			{
+				targetAI.TakeDamage(damage);
+				
+				// Track kill
+				if (targetAI.currentHealth <= 0)
+				{
+					fitnessMetrics.kills++;
+				}
+			}
+		}
+		else
+		{
+			fitnessMetrics.missedAttacks++;
+		}
+	}
 
     public void TakeDamage(float damage)
-    {
-        currentHealth -= damage;
-        Debug.Log($"{name} took {damage} damage. Health: {currentHealth}/{maxHealth}");
+	{
+		currentHealth -= damage;
+		fitnessMetrics.damageTaken += damage;
+		fitnessMetrics.healthRemaining = currentHealth;
+		
+		Debug.Log($"{name} took {damage} damage. Health: {currentHealth}/{maxHealth}");
 
-        if (currentHealth <= 0f)
-        {
-            Die();
-        }
-    }
+		if (currentHealth <= 0f)
+		{
+			Die();
+		}
+	}
 
     void Die()
-    {
-        Debug.Log($"{name} died!");
-        // Add death logic here
-        Destroy(gameObject);
-    }
+	{
+		fitnessMetrics.deaths++;
+		fitnessMetrics.healthRemaining = 0;
+		
+		Debug.Log($"{name} died! Final Fitness Stats:");
+		Debug.Log($"  Damage Dealt: {fitnessMetrics.damageDealt}");
+		Debug.Log($"  Survival Time: {fitnessMetrics.survivalTime}s");
+		Debug.Log($"  Kills: {fitnessMetrics.kills}");
+		
+		Destroy(gameObject);
+	}
 
     // ==========================================
     // INFLUENCE + DECISION
@@ -691,6 +753,38 @@ public class EnemyAI : MonoBehaviour
             );
         }
     }
+	
+	public void ApplyGenome(GeneticAlgorithm.Genome _genome)
+	{
+		genome = _genome;
+		
+		// Apply personality
+		scary = genome.scary;
+		bravey = genome.bravery;
+		
+		// Apply behavior
+		chaseRange = genome.chaseRange;
+		attackRange = genome.attackRange;
+		fleeHealthThreshold = genome.fleeHealthThreshold;
+		patrolRadius = genome.patrolRadius;
+		
+		// Apply movement
+		moveSpeed = genome.moveSpeed;
+		rotationSpeed = genome.rotationSpeed;
+		
+		// Apply influence
+		influenceWeight = genome.influenceWeight;
+		goalWeight = genome.goalWeight;
+		heatAttractionWeight = genome.heatAttractionWeight;
+		
+		// Apply fuzzy biases
+		if (fuzzyLogic != null)
+		{
+			fuzzyLogic.aggressionBias = genome.aggressionBias;
+			fuzzyLogic.cautionBias = genome.cautionBias;
+			fuzzyLogic.fleeBias = genome.fleeBias;
+		}
+	}
 }
 
 // ==========================================
