@@ -7,8 +7,9 @@ public class EvolutionManager : MonoBehaviour
 {
     [Header("Population")]
     public GameObject enemyPrefab;
-    public int populationSize = 20;
-    public Transform[] spawnPoints;
+    public int populationSizePerTeam = 10;
+    public Transform[] redSpawnPoints;
+    public Transform[] blueSpawnPoints;
     
     [Header("Evolution Settings")]
     public SelectionMethod selectionMethod = SelectionMethod.Tournament;
@@ -18,10 +19,11 @@ public class EvolutionManager : MonoBehaviour
     public float mutationStrength = 1f;
     public int eliteCount = 2;
     
-    [Header("Generation Settings")]
-    public float generationDuration = 60f; // seconds per generation
+    [Header("Battle Settings")]
+    public float battleDuration = 90f;
     public bool autoEvolve = true;
     public int currentGeneration = 0;
+    public bool evolveWinnerOnly = false; // Only evolve winning team
     
     [Header("Fitness Function Weights")]
     public float damageDealtWeight = 10f;
@@ -29,35 +31,40 @@ public class EvolutionManager : MonoBehaviour
     public float killWeight = 50f;
     public float damageTakenPenalty = -5f;
     public float deathPenalty = -100f;
-    public float playerProximityWeight = 2f;
+    public float teamWinBonus = 200f;
     public float accuracyWeight = 5f;
     
     [Header("Debug")]
     public bool showStats = true;
     public bool logEvolution = true;
 
-    private List<Genome> currentPopulation = new List<Genome>();
-    private List<GameObject> activeEnemies = new List<GameObject>();
-    private float generationTimer = 0f;
+    private List<Genome> redPopulation = new List<Genome>();
+    private List<Genome> bluePopulation = new List<Genome>();
+    private List<GameObject> redEnemies = new List<GameObject>();
+    private List<GameObject> blueEnemies = new List<GameObject>();
+    private float battleTimer = 0f;
     
     // Statistics
-    private float bestFitness = 0f;
-    private float averageFitness = 0f;
-    private Genome bestGenome;
+    private float redBestFitness = 0f;
+    private float blueBestFitness = 0f;
+    private float redAvgFitness = 0f;
+    private float blueAvgFitness = 0f;
+    private int redWins = 0;
+    private int blueWins = 0;
 
     void Start()
     {
-        InitializePopulation();
-        SpawnGeneration();
+        InitializePopulations();
+        SpawnBattle();
     }
 
     void Update()
     {
         if (!autoEvolve) return;
 
-        generationTimer += Time.deltaTime;
+        battleTimer += Time.deltaTime;
 
-        if (generationTimer >= generationDuration || AllEnemiesDead())
+        if (battleTimer >= battleDuration || BattleOver())
         {
             EvolveNextGeneration();
         }
@@ -67,76 +74,108 @@ public class EvolutionManager : MonoBehaviour
     // INITIALIZATION
     // ==========================================
 
-    void InitializePopulation()
+    void InitializePopulations()
     {
-        currentPopulation.Clear();
+        redPopulation.Clear();
+        bluePopulation.Clear();
         
-        for (int i = 0; i < populationSize; i++)
+        for (int i = 0; i < populationSizePerTeam; i++)
         {
-            currentPopulation.Add(Genome.CreateRandom());
+            redPopulation.Add(Genome.CreateRandom());
+            bluePopulation.Add(Genome.CreateRandom());
         }
         
         currentGeneration = 1;
         
         if (logEvolution)
         {
-            Debug.Log($"[Evolution] Generation 1 initialized with {populationSize} random genomes");
+            Debug.Log($"[Evolution] Generation 1 initialized with {populationSizePerTeam} genomes per team");
         }
     }
 
-    void SpawnGeneration()
+    void SpawnBattle()
     {
-        // Clear previous generation
-        foreach (var enemy in activeEnemies)
+        // Clear previous battle
+        foreach (var enemy in redEnemies)
         {
             if (enemy != null) Destroy(enemy);
         }
-        activeEnemies.Clear();
-
-        // Spawn new generation
-        for (int i = 0; i < currentPopulation.Count; i++)
+        foreach (var enemy in blueEnemies)
         {
-            Vector3 spawnPos = GetSpawnPosition(i);
+            if (enemy != null) Destroy(enemy);
+        }
+        redEnemies.Clear();
+        blueEnemies.Clear();
+
+        // Reset team stats
+        if (TeamManager.Instance != null)
+        {
+            TeamManager.Instance.ResetStats();
+        }
+
+        // Spawn Red Team
+        for (int i = 0; i < redPopulation.Count; i++)
+        {
+            Vector3 spawnPos = GetSpawnPosition(i, redSpawnPoints);
             GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+            enemy.name = $"Red_{i}";
             
-            // Apply genome
             EnemyAI ai = enemy.GetComponent<EnemyAI>();
             if (ai != null)
             {
-                ai.ApplyGenome(currentPopulation[i]);
+                ai.SetTeam(Team.Red);
+                ai.ApplyGenome(redPopulation[i]);
             }
             
-            activeEnemies.Add(enemy);
+            redEnemies.Add(enemy);
         }
 
-        generationTimer = 0f;
+        // Spawn Blue Team
+        for (int i = 0; i < bluePopulation.Count; i++)
+        {
+            Vector3 spawnPos = GetSpawnPosition(i, blueSpawnPoints);
+            GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+            enemy.name = $"Blue_{i}";
+            
+            EnemyAI ai = enemy.GetComponent<EnemyAI>();
+            if (ai != null)
+            {
+                ai.SetTeam(Team.Blue);
+                ai.ApplyGenome(bluePopulation[i]);
+            }
+            
+            blueEnemies.Add(enemy);
+        }
+
+        battleTimer = 0f;
         
         if (logEvolution)
         {
-            Debug.Log($"[Evolution] Generation {currentGeneration} spawned");
+            Debug.Log($"[Evolution] Generation {currentGeneration} battle started!");
         }
     }
 
-    Vector3 GetSpawnPosition(int index)
+    Vector3 GetSpawnPosition(int index, Transform[] spawnPoints)
     {
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
             int spawnIndex = index % spawnPoints.Length;
-            return spawnPoints[spawnIndex].position;
+            Vector3 basePos = spawnPoints[spawnIndex].position;
+            
+            // Add random offset to avoid exact overlap
+            Vector2 randomOffset = Random.insideUnitCircle * 2f;
+            return basePos + new Vector3(randomOffset.x, 0, randomOffset.y);
         }
         
-        // Random spawn in circle
+        // Fallback random spawn
         Vector2 randomCircle = Random.insideUnitCircle * 10f;
         return new Vector3(randomCircle.x, 0, randomCircle.y);
     }
 
-    bool AllEnemiesDead()
+    bool BattleOver()
     {
-        foreach (var enemy in activeEnemies)
-        {
-            if (enemy != null) return false;
-        }
-        return true;
+        if (TeamManager.Instance == null) return false;
+        return TeamManager.Instance.GetWinningTeam() != Team.Neutral;
     }
 
     // ==========================================
@@ -145,57 +184,108 @@ public class EvolutionManager : MonoBehaviour
 
     void EvaluateFitness()
     {
-        for (int i = 0; i < activeEnemies.Count; i++)
+        Team winner = Team.Neutral;
+        if (TeamManager.Instance != null)
         {
-            if (activeEnemies[i] == null) continue;
-
-            EnemyAI ai = activeEnemies[i].GetComponent<EnemyAI>();
-            if (ai == null) continue;
-
-            FitnessMetrics metrics = ai.fitnessMetrics;
+            winner = TeamManager.Instance.GetWinningTeam();
             
-            // Calculate fitness using weighted components
+            if (winner == Team.Red) redWins++;
+            else if (winner == Team.Blue) blueWins++;
+        }
+
+        // Evaluate Red Team
+        for (int i = 0; i < redEnemies.Count; i++)
+        {
+            if (i >= redPopulation.Count) continue;
+            
             float fitness = 0f;
-
-            // Positive contributions
-            fitness += metrics.damageDealt * damageDealtWeight;
-            fitness += metrics.survivalTime * survivalWeight;
-            fitness += metrics.kills * killWeight;
-            fitness += metrics.timeNearPlayer * playerProximityWeight;
             
-            // Accuracy bonus
-            int totalAttacks = metrics.successfulAttacks + metrics.missedAttacks;
-            if (totalAttacks > 0)
+            if (redEnemies[i] != null)
             {
-                float accuracy = (float)metrics.successfulAttacks / totalAttacks;
-                fitness += accuracy * accuracyWeight * 10f;
+                EnemyAI ai = redEnemies[i].GetComponent<EnemyAI>();
+                if (ai != null)
+                {
+                    fitness = CalculateFitness(ai.fitnessMetrics, winner == Team.Red);
+                }
             }
+            else
+            {
+                // Dead - still calculate fitness from last known metrics
+                fitness = deathPenalty;
+            }
+
+            redPopulation[i].fitness = fitness;
+        }
+
+        // Evaluate Blue Team
+        for (int i = 0; i < blueEnemies.Count; i++)
+        {
+            if (i >= bluePopulation.Count) continue;
             
-            // Health bonus (survived with health)
-            fitness += (metrics.healthRemaining / 100f) * 20f;
+            float fitness = 0f;
+            
+            if (blueEnemies[i] != null)
+            {
+                EnemyAI ai = blueEnemies[i].GetComponent<EnemyAI>();
+                if (ai != null)
+                {
+                    fitness = CalculateFitness(ai.fitnessMetrics, winner == Team.Blue);
+                }
+            }
+            else
+            {
+                fitness = deathPenalty;
+            }
 
-            // Negative contributions
-            fitness += metrics.damageTaken * damageTakenPenalty;
-            fitness += metrics.deaths * deathPenalty;
-
-            // Ensure minimum fitness
-            fitness = Mathf.Max(0, fitness);
-
-            currentPopulation[i].fitness = fitness;
+            bluePopulation[i].fitness = fitness;
         }
 
         // Calculate statistics
-        if (currentPopulation.Count > 0)
-        {
-            averageFitness = currentPopulation.Average(g => g.fitness);
-            bestFitness = currentPopulation.Max(g => g.fitness);
-            bestGenome = currentPopulation.OrderByDescending(g => g.fitness).First().Clone();
-        }
+        redAvgFitness = redPopulation.Average(g => g.fitness);
+        blueAvgFitness = bluePopulation.Average(g => g.fitness);
+        redBestFitness = redPopulation.Max(g => g.fitness);
+        blueBestFitness = bluePopulation.Max(g => g.fitness);
 
         if (logEvolution)
         {
-            Debug.Log($"[Evolution] Gen {currentGeneration} - Best: {bestFitness:F1}, Avg: {averageFitness:F1}");
+            Debug.Log($"[Evolution] Gen {currentGeneration} Results:");
+            Debug.Log($"  Winner: {winner}");
+            Debug.Log($"  Red - Best: {redBestFitness:F1}, Avg: {redAvgFitness:F1}");
+            Debug.Log($"  Blue - Best: {blueBestFitness:F1}, Avg: {blueAvgFitness:F1}");
         }
+    }
+
+    float CalculateFitness(FitnessMetrics metrics, bool wonBattle)
+    {
+        float fitness = 0f;
+
+        // Positive contributions
+        fitness += metrics.damageDealt * damageDealtWeight;
+        fitness += metrics.survivalTime * survivalWeight;
+        fitness += metrics.kills * killWeight;
+        
+        // Accuracy bonus
+        int totalAttacks = metrics.successfulAttacks + metrics.missedAttacks;
+        if (totalAttacks > 0)
+        {
+            float accuracy = (float)metrics.successfulAttacks / totalAttacks;
+            fitness += accuracy * accuracyWeight * 10f;
+        }
+        
+        // Health bonus
+        fitness += (metrics.healthRemaining / 100f) * 20f;
+
+        // Negative contributions
+        fitness += metrics.damageTaken * damageTakenPenalty;
+        fitness += metrics.deaths * deathPenalty;
+
+        // Team win bonus
+        if (wonBattle)
+        {
+            fitness += teamWinBonus;
+        }
+
+        return Mathf.Max(0, fitness);
     }
 
     // ==========================================
@@ -206,35 +296,50 @@ public class EvolutionManager : MonoBehaviour
     {
         EvaluateFitness();
 
+        Team winner = Team.Neutral;
+        if (TeamManager.Instance != null)
+        {
+            winner = TeamManager.Instance.GetWinningTeam();
+        }
+
+        // Evolve Red Team (unless evolveWinnerOnly and they lost)
+        if (!evolveWinnerOnly || winner == Team.Red || winner == Team.Neutral)
+        {
+            redPopulation = EvolvePopulation(redPopulation);
+        }
+
+        // Evolve Blue Team (unless evolveWinnerOnly and they lost)
+        if (!evolveWinnerOnly || winner == Team.Blue || winner == Team.Neutral)
+        {
+            bluePopulation = EvolvePopulation(bluePopulation);
+        }
+
+        currentGeneration++;
+        SpawnBattle();
+    }
+
+    List<Genome> EvolvePopulation(List<Genome> population)
+    {
         List<Genome> newPopulation = new List<Genome>();
 
-        // Elitism - keep best genomes
-        var sortedPopulation = currentPopulation.OrderByDescending(g => g.fitness).ToList();
+        // Elitism
+        var sortedPopulation = population.OrderByDescending(g => g.fitness).ToList();
         for (int i = 0; i < eliteCount && i < sortedPopulation.Count; i++)
         {
             newPopulation.Add(sortedPopulation[i].Clone());
         }
 
-        // Fill rest with offspring
-        while (newPopulation.Count < populationSize)
+        // Fill with offspring
+        while (newPopulation.Count < population.Count)
         {
-            // Selection
-            Genome parent1 = SelectParent(currentPopulation);
-            Genome parent2 = SelectParent(currentPopulation);
-
-            // Crossover
+            Genome parent1 = SelectParent(population);
+            Genome parent2 = SelectParent(population);
             Genome child = Crossover(parent1, parent2);
-
-            // Mutation
             Mutate(child, mutationRate, mutationStrength);
-
             newPopulation.Add(child);
         }
 
-        currentPopulation = newPopulation;
-        currentGeneration++;
-
-        SpawnGeneration();
+        return newPopulation;
     }
 
     Genome SelectParent(List<Genome> population)
@@ -260,9 +365,6 @@ public class EvolutionManager : MonoBehaviour
         {
             case CrossoverMethod.SinglePoint:
                 return SinglePointCrossover(parent1, parent2);
-            case CrossoverMethod.TwoPoint:
-                // Simplified as single point for now
-                return SinglePointCrossover(parent1, parent2);
             case CrossoverMethod.Uniform:
                 return UniformCrossover(parent1, parent2);
             case CrossoverMethod.Arithmetic:
@@ -273,7 +375,7 @@ public class EvolutionManager : MonoBehaviour
     }
 
     // ==========================================
-    // UI / DEBUG
+    // UI
     // ==========================================
 
     void OnGUI()
@@ -285,41 +387,19 @@ public class EvolutionManager : MonoBehaviour
         style.normal.textColor = Color.white;
         style.fontStyle = FontStyle.Bold;
 
-        GUI.Label(new Rect(10, 10, 400, 150),
-            $"=== GENETIC ALGORITHM ===\n" +
+        GUI.Label(new Rect(Screen.width / 2 - 150, 10, 300, 200),
+            $"=== BATTLE SIMULATOR ===\n" +
             $"Generation: {currentGeneration}\n" +
-            $"Time: {generationTimer:F1}s / {generationDuration}s\n" +
-            $"Alive: {activeEnemies.Count(e => e != null)} / {populationSize}\n" +
-            $"Best Fitness: {bestFitness:F1}\n" +
-            $"Avg Fitness: {averageFitness:F1}",
+            $"Time: {battleTimer:F1}s / {battleDuration}s\n\n" +
+            $"Red Wins: {redWins}\n" +
+            $"Blue Wins: {blueWins}\n\n" +
+            $"Red Best: {redBestFitness:F0}\n" +
+            $"Blue Best: {blueBestFitness:F0}",
             style);
 
-        // Manual evolution button
-        if (GUI.Button(new Rect(10, 170, 150, 30), "Evolve Now"))
+        if (GUI.Button(new Rect(Screen.width / 2 - 75, 220, 150, 30), "Next Battle"))
         {
             EvolveNextGeneration();
-        }
-    }
-
-    // Save/Load best genome
-    public void SaveBestGenome()
-    {
-        if (bestGenome != null)
-        {
-            string json = JsonUtility.ToJson(bestGenome, true);
-            System.IO.File.WriteAllText(Application.dataPath + "/BestGenome.json", json);
-            Debug.Log("Best genome saved!");
-        }
-    }
-
-    public void LoadBestGenome()
-    {
-        string path = Application.dataPath + "/BestGenome.json";
-        if (System.IO.File.Exists(path))
-        {
-            string json = System.IO.File.ReadAllText(path);
-            bestGenome = JsonUtility.FromJson<Genome>(json);
-            Debug.Log("Best genome loaded!");
         }
     }
 }

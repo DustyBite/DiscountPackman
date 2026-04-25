@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using static GeneticAlgorithm;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -80,6 +81,15 @@ public class EnemyAI : MonoBehaviour
 	[Header("Genetic Algorithm")]
 	public GeneticAlgorithm.Genome genome;
 	public GeneticAlgorithm.FitnessMetrics fitnessMetrics = new GeneticAlgorithm.FitnessMetrics();
+	
+	[Header("Team")]
+	public Team team = Team.Neutral;
+	public Material teamMaterial;
+
+	[Header("Size Scaling")]
+	public bool scaleByStats = true;
+	public float minScale = 0.7f;
+	public float maxScale = 1.5f;
 
 	private float lifeStartTime;
 	private Vector3 lastPosition;
@@ -136,7 +146,15 @@ public class EnemyAI : MonoBehaviour
 		lastPosition = transform.position;
 		fitnessMetrics.Reset();
 		fitnessMetrics.healthRemaining = currentHealth;
-    }
+		
+		// Apply team visuals
+		ApplyTeamVisuals();
+		
+		lifeStartTime = Time.time;
+		lastPosition = transform.position;
+		fitnessMetrics.Reset();
+		fitnessMetrics.healthRemaining = currentHealth;
+	}
 
     void Update()
 	{
@@ -223,6 +241,12 @@ public class EnemyAI : MonoBehaviour
 		{
 			if (enemy == gameObject) continue;
 			
+			EnemyAI enemyAI = enemy.GetComponent<EnemyAI>();
+			if (enemyAI == null) continue;
+			
+			// Only count same team as allies
+			if (enemyAI.team != this.team) continue;
+			
 			float dist = Vector3.Distance(transform.position, enemy.transform.position);
 			if (dist < 8f) count++;
 		}
@@ -289,32 +313,38 @@ public class EnemyAI : MonoBehaviour
     // ==========================================
 
     public GameObject DetectTargets()
-    {
-        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
-        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+	{
+		GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+		
+		List<GameObject> targets = new List<GameObject>();
+		
+		foreach (GameObject enemy in enemies)
+		{
+			if (enemy == this.gameObject) continue;
+			
+			// Only target enemies on different team
+			EnemyAI enemyAI = enemy.GetComponent<EnemyAI>();
+			if (enemyAI != null && enemyAI.team == this.team) continue;
+			
+			targets.Add(enemy);
+		}
 
-        List<GameObject> targets = new List<GameObject>();
-        if (enemies != null) targets.AddRange(enemies);
-        if (playerObj != null) targets.Add(playerObj);
+		GameObject closestTarget = null;
+		float closestDistance = Mathf.Infinity;
 
-        GameObject closestTarget = null;
-        float closestDistance = Mathf.Infinity;
+		foreach (GameObject t in targets)
+		{
+			float distance = Vector3.Distance(transform.position, t.transform.position);
+			
+			if (distance < chaseRange && distance < closestDistance)
+			{
+				closestTarget = t;
+				closestDistance = distance;
+			}
+		}
 
-        foreach (GameObject t in targets)
-        {
-            if (t == this.gameObject) continue;
-
-            float distance = Vector3.Distance(transform.position, t.transform.position);
-            
-            if (distance < chaseRange && distance < closestDistance)
-            {
-                closestTarget = t;
-                closestDistance = distance;
-            }
-        }
-
-        return closestTarget;
-    }
+		return closestTarget;
+	}
 
     public void UpdatePathfinding(Vector3 targetPosition)
     {
@@ -428,7 +458,7 @@ public class EnemyAI : MonoBehaviour
 
     public void PerformAttack(GameObject target)
 	{
-		Debug.Log($"{name} attacks {target.name}!");
+		Debug.Log($"{name} ({team}) attacks {target.name}!");
 		
 		float damage = 10f;
 		if (genome != null)
@@ -447,7 +477,7 @@ public class EnemyAI : MonoBehaviour
 			EnemyAI targetAI = target.GetComponent<EnemyAI>();
 			if (targetAI != null)
 			{
-				targetAI.TakeDamage(damage);
+				targetAI.TakeDamage(damage, this.team); // Pass attacker's team
 				
 				// Track kill
 				if (targetAI.currentHealth <= 0)
@@ -462,13 +492,19 @@ public class EnemyAI : MonoBehaviour
 		}
 	}
 
-    public void TakeDamage(float damage)
+    public void TakeDamage(float damage, Team attackerTeam)
 	{
 		currentHealth -= damage;
 		fitnessMetrics.damageTaken += damage;
 		fitnessMetrics.healthRemaining = currentHealth;
 		
-		Debug.Log($"{name} took {damage} damage. Health: {currentHealth}/{maxHealth}");
+		// Track team damage
+		if (TeamManager.Instance != null)
+		{
+			TeamManager.Instance.RegisterDamage(attackerTeam, damage);
+		}
+		
+		Debug.Log($"{name} ({team}) took {damage} damage from {attackerTeam}. Health: {currentHealth}/{maxHealth}");
 
 		if (currentHealth <= 0f)
 		{
@@ -481,14 +517,20 @@ public class EnemyAI : MonoBehaviour
 		fitnessMetrics.deaths++;
 		fitnessMetrics.healthRemaining = 0;
 		
-		Debug.Log($"{name} died! Final Fitness Stats:");
+		// Notify team manager
+		if (TeamManager.Instance != null)
+		{
+			TeamManager.Instance.RegisterDeath(team);
+		}
+		
+		Debug.Log($"{name} ({team}) died! Final Fitness Stats:");
 		Debug.Log($"  Damage Dealt: {fitnessMetrics.damageDealt}");
 		Debug.Log($"  Survival Time: {fitnessMetrics.survivalTime}s");
 		Debug.Log($"  Kills: {fitnessMetrics.kills}");
 		
 		Destroy(gameObject);
 	}
-
+	
     // ==========================================
     // INFLUENCE + DECISION
     // ==========================================
@@ -783,6 +825,82 @@ public class EnemyAI : MonoBehaviour
 			fuzzyLogic.aggressionBias = genome.aggressionBias;
 			fuzzyLogic.cautionBias = genome.cautionBias;
 			fuzzyLogic.fleeBias = genome.fleeBias;
+		}
+		
+		// Apply visuals based on genome
+		ApplyGenomeVisuals();
+	}
+	
+	public void SetTeam(Team newTeam)
+	{
+		team = newTeam;
+		ApplyTeamVisuals();
+		
+		// Register with team manager
+		if (TeamManager.Instance != null)
+		{
+			if (team == Team.Red)
+			{
+				TeamManager.Instance.redTeamAlive++;
+			}
+			else if (team == Team.Blue)
+			{
+				TeamManager.Instance.blueTeamAlive++;
+			}
+		}
+	}
+
+	void ApplyTeamVisuals()
+	{
+		if (enemyMesh == null) return;
+
+		// Apply team color
+		Renderer renderer = enemyMesh.GetComponent<Renderer>();
+		if (renderer != null && TeamManager.Instance != null)
+		{
+			Color teamColor = TeamManager.Instance.GetTeamColor(team);
+			
+			// Create new material instance if needed
+			if (teamMaterial == null)
+			{
+				teamMaterial = new Material(renderer.material);
+			}
+			
+			teamMaterial.color = teamColor;
+			renderer.material = teamMaterial;
+		}
+	}
+
+	public void ApplyGenomeVisuals()
+	{
+		if (genome == null || enemyMesh == null || !scaleByStats) return;
+
+		// Calculate size based on stats
+		// Bigger = Higher damage and health
+		// Taller = Faster speed
+		
+		float strengthFactor = (genome.damageMultiplier + (maxHealth / 100f)) / 2f;
+		float speedFactor = genome.moveSpeed / 5f;
+		
+		// Normalize to 0-1 range
+		strengthFactor = Mathf.Clamp01(strengthFactor);
+		speedFactor = Mathf.Clamp01(speedFactor);
+		
+		// Width/depth based on strength (damage/health)
+		float widthScale = Mathf.Lerp(minScale, maxScale, strengthFactor);
+		
+		// Height based on speed
+		float heightScale = Mathf.Lerp(minScale, maxScale, speedFactor);
+		
+		// Apply scale
+		enemyMesh.localScale = new Vector3(widthScale, heightScale, widthScale);
+		
+		// Adjust character controller to match
+		if (controller != null)
+		{
+			controller.radius = 0.5f * widthScale;
+			controller.height = 2f * heightScale;
+			controller.center = new Vector3(0, heightScale, 0);
 		}
 	}
 }

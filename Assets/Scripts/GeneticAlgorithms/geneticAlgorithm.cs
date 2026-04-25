@@ -10,110 +10,117 @@ public class GeneticAlgorithm
     
     [System.Serializable]
     public class Genome
-    {
-        public int id;
-        public float fitness = 0f;
-        
-        // AI Personality Genes
-        public float scary;
-        public float bravery;
-        public float aggression;
-        public float caution;
-        
-        // Behavior Genes
-        public float chaseRange;
-        public float attackRange;
-        public float fleeHealthThreshold;
-        public float patrolRadius;
-        
-        // Movement Genes
-        public float moveSpeed;
-        public float rotationSpeed;
-        
-        // Influence Genes
-        public float influenceWeight;
-        public float goalWeight;
-        public float heatAttractionWeight;
-        
-        // Fuzzy Logic Genes
-        public float aggressionBias;      // Shifts aggression threshold
-        public float cautionBias;         // Shifts caution threshold
-        public float fleeBias;            // Shifts flee threshold
-        
-        // Combat Genes
-        public float attackCooldownModifier;  // How fast they attack
-        public float damageMultiplier;        // How much damage they deal
+	{
+		public int id;
+		public float fitness = 0f;
+		
+		// AI Personality Genes
+		public float scary;
+		public float bravery;
+		public float aggression;
+		public float caution;
+		
+		// Behavior Genes
+		public float chaseRange;
+		public float attackRange;
+		public float fleeHealthThreshold;
+		public float patrolRadius;
+		
+		// Movement Genes
+		public float moveSpeed;
+		public float rotationSpeed;
+		
+		// Influence Genes
+		public float influenceWeight;
+		public float goalWeight;
+		public float heatAttractionWeight;
+		
+		// Fuzzy Logic Genes
+		public float aggressionBias;
+		public float cautionBias;
+		public float fleeBias;
+		
+		// Combat Genes
+		public float attackCooldownModifier;
+		public float damageMultiplier;
 
-        public Genome()
-        {
-            id = Random.Range(0, 999999);
-        }
+		// FIXED: Don't use Random in constructor
+		public Genome()
+		{
+			// Don't assign random ID here - do it in CreateRandom()
+			id = 0;
+		}
 
-        // Create random genome
-        public static Genome CreateRandom()
-        {
-            Genome genome = new Genome();
-            
-            genome.scary = Random.Range(1f, 10f);
-            genome.bravery = Random.Range(1f, 10f);
-            genome.aggression = Random.Range(0f, 100f);
-            genome.caution = Random.Range(0f, 100f);
-            
-            genome.chaseRange = Random.Range(5f, 15f);
-            genome.attackRange = Random.Range(1.5f, 4f);
-            genome.fleeHealthThreshold = Random.Range(10f, 50f);
-            genome.patrolRadius = Random.Range(10f, 20f);
-            
-            genome.moveSpeed = Random.Range(2f, 5f);
-            genome.rotationSpeed = Random.Range(5f, 15f);
-            
-            genome.influenceWeight = Random.Range(0.2f, 3f);
-            genome.goalWeight = Random.Range(2f, 8f);
-            genome.heatAttractionWeight = Random.Range(1f, 5f);
-            
-            genome.aggressionBias = Random.Range(-20f, 20f);
-            genome.cautionBias = Random.Range(-20f, 20f);
-            genome.fleeBias = Random.Range(-20f, 20f);
-            
-            genome.attackCooldownModifier = Random.Range(0.5f, 2f);
-            genome.damageMultiplier = Random.Range(0.5f, 1.5f);
-            
-            return genome;
-        }
+		// Create random genome
+		public static Genome CreateRandom()
+		{
+			Genome genome = new Genome();
+			
+			// NOW assign random ID
+			genome.id = Random.Range(0, 999999);
+			
+			genome.scary = Random.Range(1f, 10f);
+			genome.bravery = Random.Range(1f, 10f);
+			genome.aggression = Random.Range(0f, 100f);
+			genome.caution = Random.Range(0f, 100f);
+			
+			genome.chaseRange = Random.Range(5f, 15f);
+			genome.attackRange = Random.Range(1.5f, 4f);
+			genome.fleeHealthThreshold = Random.Range(10f, 50f);
+			genome.patrolRadius = Random.Range(10f, 20f);
+			
+			genome.moveSpeed = Random.Range(2f, 5f);
+			genome.rotationSpeed = Random.Range(5f, 15f);
+			
+			genome.influenceWeight = Random.Range(0.2f, 3f);
+			genome.goalWeight = Random.Range(2f, 8f);
+			genome.heatAttractionWeight = Random.Range(1f, 5f);
+			
+			genome.aggressionBias = Random.Range(-20f, 20f);
+			genome.cautionBias = Random.Range(-20f, 20f);
+			genome.fleeBias = Random.Range(-20f, 20f);
+			
+			genome.attackCooldownModifier = Random.Range(0.5f, 2f);
+			genome.damageMultiplier = Random.Range(0.5f, 1.5f);
+			
+			return genome;
+		}
 
-        // Deep copy
-        public Genome Clone()
-        {
-            Genome clone = new Genome();
-            clone.id = Random.Range(0, 999999);
-            
-            clone.scary = scary;
-            clone.bravery = bravery;
-            clone.aggression = aggression;
-            clone.caution = caution;
-            
-            clone.chaseRange = chaseRange;
-            clone.attackRange = attackRange;
-            clone.fleeHealthThreshold = fleeHealthThreshold;
-            clone.patrolRadius = patrolRadius;
-            
-            clone.moveSpeed = moveSpeed;
-            clone.rotationSpeed = rotationSpeed;
-            
-            clone.influenceWeight = influenceWeight;
-            clone.goalWeight = goalWeight;
-            clone.heatAttractionWeight = heatAttractionWeight;
-            
-            clone.aggressionBias = aggressionBias;
-            clone.cautionBias = cautionBias;
-            clone.fleeBias = fleeBias;
-            
-            clone.attackCooldownModifier = attackCooldownModifier;
-            clone.damageMultiplier = damageMultiplier;
-            
-            return clone;
-        }
-    }
+		// Deep copy
+		public Genome Clone()
+		{
+			Genome clone = new Genome();
+			
+			// NOW assign random ID in Clone too
+			clone.id = Random.Range(0, 999999);
+			
+			clone.scary = scary;
+			clone.bravery = bravery;
+			clone.aggression = aggression;
+			clone.caution = caution;
+			
+			clone.chaseRange = chaseRange;
+			clone.attackRange = attackRange;
+			clone.fleeHealthThreshold = fleeHealthThreshold;
+			clone.patrolRadius = patrolRadius;
+			
+			clone.moveSpeed = moveSpeed;
+			clone.rotationSpeed = rotationSpeed;
+			
+			clone.influenceWeight = influenceWeight;
+			clone.goalWeight = goalWeight;
+			clone.heatAttractionWeight = heatAttractionWeight;
+			
+			clone.aggressionBias = aggressionBias;
+			clone.cautionBias = cautionBias;
+			clone.fleeBias = fleeBias;
+			
+			clone.attackCooldownModifier = attackCooldownModifier;
+			clone.damageMultiplier = damageMultiplier;
+			
+			return clone;
+		}
+	}
 
     // ==========================================
     // FITNESS TRACKING

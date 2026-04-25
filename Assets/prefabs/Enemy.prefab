@@ -162,22 +162,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 032c58070cb2a7e498e16e69564b55c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyChase
-  scary: 5
-  bravey: 15
+  scary: 10
+  bravey: 10
   maxHealth: 100
   currentHealth: 100
   fleeHealthThreshold: 30
   enemyMesh: {fileID: 2749317864984898303}
   influenceMap: {fileID: 0}
   controller: {fileID: 3750424709119564357}
-  moveSpeed: 5
+  moveSpeed: 10
   rotationSpeed: 10
   stopDistance: 1.5
-  chaseRange: 5
+  chaseRange: 20
   attackRange: 2
-  patrolRadius: 15
+  patrolRadius: 50
   spawnPosition: {x: 0, y: 0, z: 0}
-  wanderRadius: 15
+  wanderRadius: 20
   wanderTime: 2
   influenceWeight: 0.5
   goalWeight: 4
@@ -208,6 +208,43 @@ MonoBehaviour:
   showObstacleRays: 1
   showPath: 1
   fuzzyLogic: {fileID: 7623836963546453956}
+  genome:
+    id: 0
+    fitness: 0
+    scary: 0
+    bravery: 0
+    aggression: 0
+    caution: 0
+    chaseRange: 0
+    attackRange: 0
+    fleeHealthThreshold: 0
+    patrolRadius: 0
+    moveSpeed: 0
+    rotationSpeed: 0
+    influenceWeight: 0
+    goalWeight: 0
+    heatAttractionWeight: 0
+    aggressionBias: 0
+    cautionBias: 0
+    fleeBias: 0
+    attackCooldownModifier: 0
+    damageMultiplier: 0
+  fitnessMetrics:
+    damageDealt: 0
+    damageTaken: 0
+    survivalTime: 0
+    kills: 0
+    deaths: 0
+    distanceTraveled: 0
+    timeNearPlayer: 0
+    successfulAttacks: 0
+    missedAttacks: 0
+    healthRemaining: 100
+  team: 2
+  teamMaterial: {fileID: 0}
+  scaleByStats: 1
+  minScale: 0.7
+  maxScale: 1.5
   currentStateType: 0
   isChasing: 0
   isFleeing: 0
@@ -255,6 +292,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyFuzzyLogic
   useFuzzyLogic: 1
   showFuzzyDebug: 0
+  aggressionBias: 0
+  cautionBias: 0
+  fleeBias: 0
   fuzzyThreatLevel: 0
   fuzzyAggressionLevel: 0
   fuzzyCautionLevel: 0
